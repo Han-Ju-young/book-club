@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>나의 200권 책장</title>
+<meta name="description" content="읽을 책을 꽂고, 다 읽으면 색칠하는 200권 디지털 책장">
+<meta name="theme-color" content="#EFE8DD">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="200권 책장">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EFE8DD; --paper:#FBF8F3; --ink:#1E1E1E; --muted:#7A7166; --line:#E3DACB;
+    --wood:#F4A640; --wood-dark:#D9862A; --wood-deep:#C2731C; --floor:#5B8FB5;
+    --accent:#E8564B; --card:#FFFFFF;
+    --hand:'Gaegu', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    --sans:-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans)}
+  body{min-height:100vh}
+  button{font:inherit;color:inherit;cursor:pointer}
+  input{font:inherit;color:inherit}
+  .app{max-width:560px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px calc(110px + env(safe-area-inset-bottom))}
+
+  /* ---------- header ---------- */
+  .top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+  h1{font-family:var(--hand);font-weight:700;font-size:32px;line-height:1;margin:0;letter-spacing:-.5px}
+  .mode{font-size:11px;color:var(--muted);background:#fff8;border:1px solid var(--line);border-radius:99px;padding:3px 8px;white-space:nowrap}
+  .mode[hidden]{display:none}
+  .top-r{display:flex;align-items:center;gap:6px}
+  .menu-btn{border:0;background:transparent;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--ink)}
+  .menu-btn:hover{background:#0000000d}
+  .menu-item{display:block;width:100%;text-align:left;border:0;background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:8px}
+  .menu-item[hidden],.menu-tip[hidden]{display:none}
+  .menu-item b{display:block;font-size:16px}
+  .menu-item span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+  .menu-tip{font-size:13px;background:#FFF6E3;border-radius:12px;padding:10px 12px;margin-bottom:8px;color:#7A5A1E}
+  .stats{margin-top:14px;background:var(--card);border-radius:16px;padding:14px 16px;box-shadow:0 1px 0 #0000000d}
+  .stats-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .big-count{font-family:var(--hand);font-size:30px;font-weight:700;line-height:1}
+  .big-count small{font-size:18px;color:var(--muted);font-weight:400}
+  .total-time{text-align:right;font-size:12px;color:var(--muted)}
+  .total-time b{display:block;font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .bar{height:8px;background:#F1ECE4;border-radius:99px;margin:10px 0 8px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#F2A23C,#E8564B);border-radius:99px;transition:width .4s}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:5px}
+  .legend i{width:9px;height:12px;border:1.5px solid var(--ink);border-radius:2px;background:#fff;display:inline-block}
+  .legend .lg-reading{position:relative}
+  .legend .lg-reading::after{content:"";position:absolute;right:1px;top:-1.5px;width:3px;height:6px;background:var(--accent)}
+  .legend .lg-done{background:#4A9AD8}
+
+  /* ---------- mini map ---------- */
+  .mini{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0 10px}
+  .mini-case{background:var(--wood);border:2px solid var(--wood-dark);border-radius:4px;padding:3px;display:grid;grid-template-columns:repeat(10,1fr);gap:1px 1px;cursor:pointer;opacity:.6;transition:opacity .2s,transform .2s}
+  .mini-case.on{opacity:1;transform:translateY(-2px)}
+  .mini-case i{height:7px;background:#ffffffa0;border-radius:1px}
+  .mini-case i.has{background:#fff}
+  .mini-case i.reading{background:#fff;box-shadow:inset 0 2px 0 var(--accent)}
+
+  .hint{margin:-2px 0 10px;font-size:13px;color:var(--muted);text-align:center}
+  .hint[hidden]{display:none}
+  /* ---------- bookcase ---------- */
+  .scroller{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -16px;padding:4px 0 0}
+  .scroller::-webkit-scrollbar{display:none}
+  .case-wrap{flex:0 0 100%;scroll-snap-align:center;padding:0 16px}
+  .case{background:var(--wood);border:3px solid var(--wood-dark);border-radius:5px;padding:6px 6px 0;position:relative;box-shadow:0 3px 0 #00000014}
+  .shelf{height:104px;margin-bottom:6px;border:2px solid var(--wood-dark);border-radius:2px;display:flex;align-items:flex-end;padding:0 5px;
+    background:
+      repeating-linear-gradient(97deg, transparent 0 11px, rgba(160,88,18,.13) 11px 12px, transparent 12px 23px),
+      radial-gradient(ellipse at 30% 20%, rgba(255,210,140,.45), transparent 60%),
+      #EE9D36;}
+  .plinth{height:16px;border:2px solid var(--wood-dark);border-bottom:0;border-radius:2px 2px 0 0;background:#F6AE4C;margin:0 -1px}
+  .floor{height:20px;background:var(--floor);margin:0 -16px;border-radius:0}
+  .case-meta{display:flex;justify-content:space-between;align-items:center;margin:12px 2px 0;font-size:13px;color:var(--muted)}
+  .case-meta b{color:var(--ink);font-family:var(--hand);font-size:19px}
+  .nav-btns{display:flex;gap:6px}
+  .nav-btns button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--card);font-size:16px;line-height:1}
+  .nav-btns button:disabled{opacity:.3;cursor:default}
+
+  .book{position:relative;flex:1 1 0;min-width:0;background:#fff;border:2px solid var(--ink);border-bottom-width:2px;border-radius:3px 3px 1px 1px;margin-left:-2px;
+        display:flex;align-items:flex-start;justify-content:center;padding:7px 0 4px;cursor:pointer;transition:transform .15s, background-color .3s}
+  .book:first-child{margin-left:0}
+  .book:hover{transform:translateY(-3px)}
+  .book:active{transform:translateY(-1px)}
+  .book .t{writing-mode:vertical-rl;text-orientation:upright;font-family:var(--hand);font-weight:700;font-size:13px;line-height:1;letter-spacing:-1px;
+           max-height:100%;overflow:hidden;white-space:nowrap;color:var(--ink);-webkit-mask-image:linear-gradient(to bottom,#000 88%,transparent);mask-image:linear-gradient(to bottom,#000 88%,transparent)}
+  .t .gap{display:inline-block;inline-size:.35em;block-size:1px}
+  .book.empty .t{font-family:var(--sans);font-weight:300;color:#DDD5C8;font-size:12px;letter-spacing:0;align-self:center;writing-mode:horizontal-tb}
+  .book.reading::after{content:"";position:absolute;right:3px;top:-2px;width:5px;height:16px;background:var(--accent);clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%)}
+  .book.running{animation:glow 1.6s ease-in-out infinite}
+  @keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(232,86,75,.0)}50%{box-shadow:0 0 0 4px rgba(232,86,75,.35)}}
+  .book.done .t{color:var(--spine-text,#fff)}
+
+  /* ---------- running banner ---------- */
+  .banner{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translate(-50%,140%);width:calc(100% - 32px);max-width:528px;background:var(--ink);color:#fff;border-radius:18px;
+          padding:12px 12px 12px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 10px 30px #0004;transition:transform .3s;z-index:20}
+  .banner.show{transform:translate(-50%,0)}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:none;animation:blink 1.2s infinite}
+  @keyframes blink{50%{opacity:.25}}
+  .banner .info{flex:1;min-width:0;cursor:pointer}
+  .banner .bt{font-size:13px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .banner .bc{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+  .banner button{background:#fff;color:var(--ink);border:0;border-radius:12px;padding:10px 16px;font-weight:700}
+
+  /* ---------- detail ---------- */
+  .detail{position:fixed;inset:0;background:var(--paper);overflow-y:auto;transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.8,.2,1);z-index:30;visibility:hidden}
+  .detail.open{transform:none;visibility:visible}
+  .d-inner{max-width:560px;margin:0 auto;padding:0 16px 60px}
+  .d-top{position:sticky;top:0;padding-top:calc(12px + env(safe-area-inset-top)) !important;background:var(--paper);display:flex;align-items:center;justify-content:space-between;padding:12px 0;z-index:2}
+  .icon-btn{border:0;background:transparent;padding:8px;border-radius:10px;font-size:15px;display:flex;align-items:center;gap:4px}
+  .icon-btn:hover{background:#0000000a}
+  .icon-btn.danger{color:#C0392B;font-size:13px}
+  .loc{font-size:12px;color:var(--muted)}
+  .hero{display:flex;gap:16px;align-items:flex-end;margin:6px 0 18px}
+  .spine-prev{flex:none;width:46px;height:132px;border:2.5px solid var(--ink);border-radius:4px 4px 2px 2px;background:#fff;display:flex;justify-content:center;padding-top:10px;position:relative;transition:background-color .3s}
+  .spine-prev .t{writing-mode:vertical-rl;text-orientation:upright;font-family:var(--hand);font-weight:700;font-size:17px;letter-spacing:-1px;overflow:hidden;white-space:nowrap;max-height:112px}
+  .spine-prev.reading::after{content:"";position:absolute;right:5px;top:-3px;width:7px;height:22px;background:var(--accent);clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%)}
+  .hero-text{flex:1;min-width:0}
+  .title-in{width:100%;border:0;background:transparent;font-family:var(--hand);font-weight:700;font-size:30px;line-height:1.1;padding:2px 0;border-bottom:2px dashed transparent;outline:none}
+  .title-in:focus{border-bottom-color:var(--line)}
+  .author-in{width:100%;border:0;background:transparent;font-size:15px;color:var(--muted);padding:4px 0;outline:none;border-bottom:1px dashed transparent}
+  .author-in:focus{border-bottom-color:var(--line)}
+  .pill{display:inline-block;margin-top:8px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;background:#EFE9DF;color:var(--muted)}
+  .pill.reading{background:#FDE7E4;color:#C0392B}
+  .pill.done{background:#E3F1E4;color:#2E7D32}
+
+  .card{background:var(--card);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 1px 0 #0000000a}
+  .card h3{margin:0 0 12px;font-size:14px;color:var(--muted);font-weight:600;display:flex;justify-content:space-between;align-items:center}
+
+  /* stopwatch */
+  .sw{text-align:center;padding:8px 0 4px}
+  .sw-label{font-size:12px;color:var(--muted)}
+  .sw-clock{font-size:48px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:1px;margin:2px 0}
+  .sw-sub{font-size:13px;color:var(--accent);min-height:18px;font-variant-numeric:tabular-nums}
+  .sw-btn{margin:14px auto 4px;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;max-width:280px;height:54px;border:0;border-radius:16px;background:var(--ink);color:#fff;font-size:17px;font-weight:700}
+  .sw-btn.stop{background:var(--accent)}
+  .sw-btn svg{width:18px;height:18px}
+  .sessions{list-style:none;margin:14px 0 0;padding:0;border-top:1px solid var(--line)}
+  .sessions li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #F2ECE3;font-size:14px}
+  .sessions .sd{color:var(--muted);width:76px;flex:none;font-size:13px}
+  .sessions .st{flex:1;font-variant-numeric:tabular-nums}
+  .sessions .sdur{font-weight:600;font-variant-numeric:tabular-nums}
+  .sessions .x{border:0;background:transparent;color:#B9AFA2;font-size:18px;padding:0 4px;line-height:1}
+  .sessions .x:hover{color:#C0392B}
+  .empty-note{font-size:13px;color:var(--muted);text-align:center;padding:12px 0 2px}
+  .more[hidden]{display:none}
+  .more{display:block;margin:8px auto 0;border:0;background:transparent;color:var(--muted);font-size:13px;text-decoration:underline}
+
+  /* dates */
+  .dates{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+  .dates label{display:block;font-size:12px;color:var(--muted)}
+  .dates input{display:block;width:100%;min-width:0;max-width:100%;-webkit-appearance:none;appearance:none;margin-top:5px;border:1.5px solid var(--line);border-radius:12px;padding:10px;background:#FDFBF8;font-size:15px;min-height:44px}
+  .dates input:focus{outline:none;border-color:var(--wood-dark)}
+  .period{margin-top:10px;font-size:13px;color:var(--muted)}
+  .period.warn{color:#C0392B}
+  .today-btn{border:0;background:transparent;color:var(--wood-deep);font-size:12px;padding:4px 0;font-weight:600}
+
+  /* photos */
+  .photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .ph{aspect-ratio:1;border-radius:12px;overflow:hidden;background:#F1ECE4;position:relative;cursor:pointer;border:0;padding:0}
+  .ph img{width:100%;height:100%;object-fit:cover;display:block}
+  .ph.add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1.5px dashed #CFC5B6;background:#FDFBF8;color:var(--muted);font-size:12px}
+  .ph.add span{font-size:26px;line-height:1;font-weight:300}
+  .ph.loading::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,#fff8,transparent);animation:shim 1s infinite}
+  @keyframes shim{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+  /* done / color */
+  .done-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .done-row p{margin:0;font-size:13px;color:var(--muted)}
+  .done-btn{border:2px solid var(--ink);background:#fff;border-radius:14px;padding:10px 16px;font-weight:700;white-space:nowrap}
+  .done-btn.on{background:var(--ink);color:#fff}
+  .palette{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:14px}
+  .palette[hidden]{display:none}
+  .sw-color{aspect-ratio:1;border-radius:50%;border:2px solid transparent;box-shadow:inset 0 0 0 2px #fff;cursor:pointer;padding:0}
+  .sw-color.on{border-color:var(--ink)}
+
+  /* ---------- overlays ---------- */
+  .scrim{position:fixed;inset:0;background:#0006;z-index:50;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+  .scrim.show{opacity:1;pointer-events:auto}
+  .sheet{background:var(--paper);width:100%;max-width:560px;border-radius:22px 22px 0 0;padding:20px 18px calc(26px + env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto;transform:translateY(30px);transition:transform .25s}
+  .scrim.show .sheet{transform:none}
+  .scrim.center{align-items:center;padding:20px}
+  .scrim.center .sheet{border-radius:20px;max-width:360px}
+  .sheet h2{font-family:var(--hand);font-size:24px;margin:0 0 4px}
+  .sheet p{margin:0 0 14px;font-size:14px;color:var(--muted);line-height:1.5}
+  .field{display:block;margin-bottom:10px}
+  .field input{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:13px 12px;background:#fff;font-size:16px}
+  .field input:focus{outline:none;border-color:var(--wood-dark)}
+  .row-btns{display:flex;gap:8px;margin-top:8px}
+  .row-btns button{flex:1;height:50px;border-radius:14px;border:0;font-weight:700;font-size:16px}
+  .btn-sub{background:#ECE5DA}
+  .btn-main{background:var(--ink);color:#fff}
+  .btn-danger{background:#C0392B;color:#fff}
+
+  .lightbox{position:fixed;inset:0;background:#000e;z-index:60;display:none;flex-direction:column}
+  .lightbox.show{display:flex}
+  .lightbox img{flex:1;min-height:0;object-fit:contain;width:100%;padding:10px}
+  .lb-bar{display:flex;justify-content:space-between;padding:12px 16px 20px}
+  .lb-bar button{background:#ffffff1f;color:#fff;border:0;border-radius:12px;padding:10px 16px}
+
+  .toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-150%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:80;transition:transform .25s,opacity .25s;opacity:0;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
+  .toast.show{transform:translate(-50%,0);opacity:1}
+
+  .loading{position:fixed;inset:0;background:var(--bg);z-index:90;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font-family:var(--hand);font-size:22px;transition:opacity .3s}
+  .loading.hide{opacity:0;pointer-events:none}
+  .loading .spin{width:28px;height:28px;border:3px solid var(--wood);border-top-color:transparent;border-radius:50%;animation:rot .8s linear infinite}
+  @keyframes rot{to{transform:rotate(360deg)}}
+
+  @media (min-width:600px){ .shelf{height:120px} .book .t{font-size:15px} }
+  @media (max-width:360px){ .shelf{height:92px} .book .t{font-size:11px} }
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading"><div class="spin"></div><div>책장을 불러오는 중…</div></div>
+
+<div class="app">
+  <div class="top">
+    <h1>나의 200권 책장</h1>
+    <div class="top-r"><span class="mode" id="modeBadge" hidden></span><button class="menu-btn" id="menuBtn" aria-label="메뉴"><svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor"><circle cx="4" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="16" cy="10" r="1.8"/></svg></button></div>
+  </div>
+
+  <section class="stats">
+    <div class="stats-row">
+      <div class="big-count"><span id="doneCount">0</span><small> / 200권 완독</small></div>
+      <div class="total-time">총 순독서 시간<b id="totalTime">0시간 0분</b></div>
+    </div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="legend">
+      <span><i></i>읽을 책 <b id="cPlanned">0</b></span>
+      <span><i class="lg-reading"></i>읽는 중 <b id="cReading">0</b></span>
+      <span><i class="lg-done"></i>완독 <b id="cDone">0</b></span>
+    </div>
+  </section>
+
+  <div class="mini" id="mini"></div>
+  <p class="hint" id="hint">빈 칸을 눌러 읽을 책을 꽂아보세요</p>
+
+  <div class="scroller" id="scroller"></div>
+
+  <div class="case-meta">
+    <div><b id="caseName">책장 1</b> &nbsp;<span id="caseInfo"></span></div>
+    <div class="nav-btns"><button id="prevCase" aria-label="이전 책장">‹</button><button id="nextCase" aria-label="다음 책장">›</button></div>
+  </div>
+</div>
+
+<!-- running banner -->
+<div class="banner" id="banner">
+  <span class="dot"></span>
+  <div class="info" id="bannerInfo">
+    <div class="bt" id="bannerTitle"></div>
+    <div class="bc" id="bannerClock">00:00:00</div>
+  </div>
+  <button id="bannerStop">멈춤</button>
+</div>
+
+<!-- detail -->
+<div class="detail" id="detail" aria-hidden="true">
+  <div class="d-inner">
+    <div class="d-top">
+      <button class="icon-btn" id="dBack">‹ 책장</button>
+      <span class="loc" id="dLoc"></span>
+      <button class="icon-btn danger" id="dDelete">삭제</button>
+    </div>
+
+    <div class="hero">
+      <div class="spine-prev" id="dSpine"><span class="t" id="dSpineT"></span></div>
+      <div class="hero-text">
+        <input class="title-in" id="dTitle" placeholder="책 제목" maxlength="80">
+        <input class="author-in" id="dAuthor" placeholder="저자 (선택)" maxlength="60">
+        <span class="pill" id="dPill">읽을 책</span>
+      </div>
+    </div>
+
+    <section class="card">
+      <h3>순독서 스톱워치</h3>
+      <div class="sw">
+        <div class="sw-label">이 책을 읽은 총 시간</div>
+        <div class="sw-clock" id="swClock">00:00:00</div>
+        <div class="sw-sub" id="swSub"></div>
+        <button class="sw-btn" id="swBtn"></button>
+      </div>
+      <ul class="sessions" id="sessions"></ul>
+      <button class="more" id="moreSessions" hidden></button>
+    </section>
+
+    <section class="card">
+      <h3>독서 기간</h3>
+      <div class="dates">
+        <label>읽기 시작한 날<input type="date" id="dStart"></label>
+        <label>다 읽은 날<input type="date" id="dEnd"></label>
+      </div>
+      <div class="period" id="dPeriod"></div>
+    </section>
+
+    <section class="card">
+      <h3>사진 <span id="photoCount" style="font-weight:400"></span></h3>
+      <div class="photos" id="photos"></div>
+      <input type="file" id="fileIn" accept="image/*" multiple hidden>
+    </section>
+
+    <section class="card">
+      <div class="done-row">
+        <div>
+          <h3 style="margin:0 0 4px">완독 &amp; 책등 색칠</h3>
+          <p id="doneDesc">다 읽으면 책장에 색이 칠해져요</p>
+        </div>
+        <button class="done-btn" id="doneBtn">다 읽었어요</button>
+      </div>
+      <div class="palette" id="palette" hidden></div>
+    </section>
+  </div>
+</div>
+
+<!-- add sheet -->
+<div class="scrim" id="addScrim">
+  <form class="sheet" id="addForm" autocomplete="off">
+    <h2>책 꽂기</h2>
+    <p id="addLoc"></p>
+    <label class="field"><input id="addTitle" placeholder="책 제목" maxlength="80" required></label>
+    <label class="field"><input id="addAuthor" placeholder="저자 (선택)" maxlength="60"></label>
+    <div class="row-btns"><button type="button" class="btn-sub" id="addCancel">취소</button><button type="submit" class="btn-main">꽂기</button></div>
+  </form>
+</div>
+
+<!-- menu -->
+<div class="scrim" id="menuScrim">
+  <div class="sheet">
+    <h2>설정</h2>
+    <p>기록은 이 기기에만 저장돼요. 폰을 바꾸거나 브라우저 데이터를 지우기 전에 꼭 백업해 주세요. <br><span id="mInfo"></span></p>
+    <button class="menu-item" id="mInstall" hidden><b>홈 화면에 앱으로 설치</b><span>앱처럼 바로 열 수 있어요</span></button>
+    <div class="menu-tip" id="mIosTip" hidden>아이폰은 Safari 하단의 공유 버튼 → "홈 화면에 추가"로 설치할 수 있어요.</div>
+    <button class="menu-item" id="mExport"><b>백업 파일 저장</b><span>사진까지 포함한 파일(.json)로 저장해요</span></button>
+    <button class="menu-item" id="mImport"><b>백업 불러오기</b><span>저장해 둔 백업 파일로 기록을 되살려요</span></button>
+    <input type="file" id="importIn" accept="application/json,.json" hidden>
+    <div class="row-btns"><button class="btn-sub" id="mClose">닫기</button></div>
+  </div>
+</div>
+
+<!-- confirm -->
+<div class="scrim center" id="cfScrim">
+  <div class="sheet">
+    <h2 id="cfTitle"></h2>
+    <p id="cfMsg"></p>
+    <div class="row-btns"><button class="btn-sub" id="cfNo">취소</button><button class="btn-danger" id="cfYes">확인</button></div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <img id="lbImg" alt="">
+  <div class="lb-bar"><button id="lbDel">사진 삭제</button><button id="lbClose">닫기</button></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+const CASES = 4, SHELVES = 5, PER = 10, TOTAL = CASES * SHELVES * PER;
+const PALETTE = ['#E8564B','#F08A3C','#F2C230','#8CC26B','#3BA88F','#4A9AD8','#4D63C7','#8E62C9','#E07BAE','#9A6A45','#6E7F8F','#2F3B4C'];
+const $ = id => document.getElementById(id);
+
+const state = { books: {}, running: null, openSlot: null, caseIdx: 0, showAllSessions: false };
+
+/* ---------------- utils ---------------- */
+const rnd = (i, k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
+const pad = n => String(n).padStart(2, '0');
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const clone = o => JSON.parse(JSON.stringify(o));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+function fmtClock(ms){ const s = Math.max(0, Math.floor(ms/1000)); return `${pad(Math.floor(s/3600))}:${pad(Math.floor(s%3600/60))}:${pad(s%60)}`; }
+function fmtKor(ms, withSec = true){
+  const s = Math.max(0, Math.floor(ms/1000)); const h = Math.floor(s/3600), m = Math.floor(s%3600/60), sec = s%60;
+  const out = []; if (h) out.push(h + '시간'); if (m || (h && !withSec)) out.push(m + '분'); if (withSec && (sec || !out.length)) out.push(sec + '초');
+  return out.join(' ') || '0분';
+}
+const DOW = ['일','월','화','수','목','금','토'];
+function fmtDay(ts){ const d = new Date(ts); return `${d.getMonth()+1}.${d.getDate()} (${DOW[d.getDay()]})`; }
+function fmtHM(ts){ const d = new Date(ts); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function locLabel(slot){ const c = Math.floor(slot/50), sh = Math.floor(slot%50/10), p = slot%10; return `책장 ${c+1} · ${sh+1}번째 칸 · ${p+1}번째`; }
+function textOn(hex){ const n = parseInt(hex.slice(1),16); const r=n>>16, g=n>>8&255, b=n&255; return (r*299+g*587+b*114)/1000 > 165 ? '#1E1E1E' : '#FFFFFF'; }
+const spineHTML = t => t.trim().split(/\s+/).map(esc).join('<i class="gap"></i>');
+function dayDiff(a, b){ return Math.round((new Date(b+'T00:00') - new Date(a+'T00:00')) / 86400000); }
+
+let toastT;
+function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400); }
+
+function confirmBox(title, msg, okLabel = '삭제'){
+  return new Promise(res => {
+    $('cfTitle').textContent = title; $('cfMsg').textContent = msg; $('cfYes').textContent = okLabel;
+    const s = $('cfScrim'); s.classList.add('show');
+    const done = v => { s.classList.remove('show'); $('cfYes').onclick = $('cfNo').onclick = s.onclick = null; res(v); };
+    $('cfYes').onclick = () => done(true); $('cfNo').onclick = () => done(false);
+    s.onclick = e => { if (e.target === s) done(false); };
+  });
+}
+
+/* ---------------- storage ---------------- */
+// 이 기기(IndexedDB)에만 저장. 백업 파일로 내보내기/가져오기.
+const Store = {
+  mode: null, onChange: null, urlCache: {},
+  async init(onChange){
+    this.onChange = onChange; this.mode = 'local';
+    try {
+      this.idb = await new Promise((res, rej) => {
+        const r = indexedDB.open('bookshelf200', 1);
+        r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('kv'); d.createObjectStore('photos'); };
+        r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+      });
+      const [books, running] = await Promise.all([this.kvGet('books'), this.kvGet('running')]);
+      state.books = books || {}; state.running = running || null;
+      try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
+    } catch (e) { this.idb = null; this.mode = 'memory'; }
+    this.onChange();
+  },
+  tx(store, mode, fn){
+    return new Promise((res, rej) => {
+      const t = this.idb.transaction(store, mode); const req = fn(t.objectStore(store));
+      t.oncomplete = () => res(req && req.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    });
+  },
+  kvGet(k){ return this.tx('kv', 'readonly', s => s.get(k)); },
+  persist(){
+    if (!this.idb) return;
+    this.tx('kv', 'readwrite', s => { s.put(state.books, 'books'); return s.put(state.running, 'running'); })
+      .catch(() => toast('저장하지 못했어요. 저장 공간을 확인해 주세요'));
+  },
+  saveBook(){ this.persist(); },
+  deleteBook(){ this.persist(); },
+  saveRunning(){ this.persist(); },
+  canPhotos(){ return true; },
+  async uploadPhoto(blob){
+    const id = 'p' + uid();
+    if (this.idb) await this.tx('photos', 'readwrite', s => s.put(blob, id));
+    this.urlCache[id] = URL.createObjectURL(blob);
+    return { id };
+  },
+  async deletePhoto(p){
+    if (this.urlCache[p.id]) { URL.revokeObjectURL(this.urlCache[p.id]); delete this.urlCache[p.id]; }
+    try { if (this.idb) await this.tx('photos', 'readwrite', s => s.delete(p.id)); } catch (e) { console.warn(e); }
+  },
+  async photoBlob(id){ return this.idb ? this.tx('photos', 'readonly', s => s.get(id)) : null; },
+  async photoSrc(p){
+    if (this.urlCache[p.id]) return this.urlCache[p.id];
+    const blob = await this.photoBlob(p.id);
+    if (!blob) return '';
+    return (this.urlCache[p.id] = URL.createObjectURL(blob));
+  },
+
+  /* ----- backup ----- */
+  async exportBackup(){
+    const toDataUrl = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
+    const photos = {};
+    for (const b of Object.values(state.books)) for (const p of (b.photos || [])) {
+      const blob = await this.photoBlob(p.id); if (blob) photos[p.id] = await toDataUrl(blob);
+    }
+    return { app: 'bookshelf200', version: 1, exportedAt: new Date().toISOString(), books: state.books, running: state.running, photos };
+  },
+  async importBackup(data){
+    if (!data || data.app !== 'bookshelf200' || typeof data.books !== 'object') throw new Error('invalid');
+    const books = {};
+    for (const [k, b] of Object.entries(data.books)) {
+      const slot = +k;
+      if (!b || !Number.isInteger(slot) || slot < 0 || slot >= TOTAL || typeof b.title !== 'string') continue;
+      books[slot] = {
+        slot, title: b.title.slice(0, 80), author: String(b.author || '').slice(0, 60), done: !!b.done,
+        color: PALETTE.includes(b.color) ? b.color : '', startDate: /^\d{4}-\d{2}-\d{2}$/.test(b.startDate) ? b.startDate : '',
+        endDate: /^\d{4}-\d{2}-\d{2}$/.test(b.endDate) ? b.endDate : '',
+        sessions: Array.isArray(b.sessions) ? b.sessions.filter(x => x && Number.isFinite(x.s) && Number.isFinite(x.e) && x.e >= x.s).map(x => ({ s: x.s, e: x.e })) : [],
+        photos: Array.isArray(b.photos) ? b.photos.filter(p => p && typeof p.id === 'string' && data.photos && typeof data.photos[p.id] === 'string').map(p => ({ id: p.id })) : [],
+        createdAt: Number.isFinite(b.createdAt) ? b.createdAt : Date.now()
+      };
+    }
+    const running = data.running && Number.isInteger(data.running.slot) && books[data.running.slot] && Number.isFinite(data.running.startedAt)
+      ? { slot: data.running.slot, startedAt: data.running.startedAt } : null;
+    const blobs = {};
+    for (const b of Object.values(books)) for (const p of b.photos) {
+      const r = await fetch(data.photos[p.id]); blobs[p.id] = await r.blob();
+    }
+    Object.values(this.urlCache).forEach(u => URL.revokeObjectURL(u)); this.urlCache = {};
+    if (this.idb) {
+      await this.tx('photos', 'readwrite', s => { s.clear(); let last; for (const [id, bl] of Object.entries(blobs)) last = s.put(bl, id); return last; });
+    } else { for (const [id, bl] of Object.entries(blobs)) this.urlCache[id] = URL.createObjectURL(bl); }
+    state.books = books; state.running = running; this.persist();
+    return Object.keys(books).length;
+  }
+};
+
+/* ---------------- model helpers ---------------- */
+const getBook = slot => state.books[slot];
+const isRunning = slot => !!state.running && state.running.slot === slot;
+function statusOf(b){
+  if (!b) return 'empty';
+  if (b.done) return 'done';
+  if (b.startDate || (b.sessions && b.sessions.length) || isRunning(b.slot)) return 'reading';
+  return 'planned';
+}
+function totalMs(b, now = Date.now()){
+  if (!b) return 0;
+  let t = (b.sessions || []).reduce((a, s) => a + Math.max(0, s.e - s.s), 0);
+  if (isRunning(b.slot)) t += Math.max(0, now - state.running.startedAt);
+  return t;
+}
+
+/* ---------------- actions ---------------- */
+function updateBook(slot, patch){
+  const cur = getBook(slot); if (!cur) return;
+  const b = Object.assign(clone(cur), patch);
+  state.books[slot] = b; renderAll();
+  return Store.saveBook(b);
+}
+function addBook(slot, title, author){
+  const b = { slot, title, author, done: false, color: '', startDate: '', endDate: '', sessions: [], photos: [], createdAt: Date.now() };
+  state.books[slot] = b; renderAll(); Store.saveBook(b);
+}
+function startTimer(slot){
+  if (state.running && state.running.slot !== slot) {
+    const prev = getBook(state.running.slot);
+    stopTimer(true);
+    if (prev) toast(`'${prev.title}' 기록을 멈추고 이 책을 시작했어요`);
+  }
+  state.running = { slot, startedAt: Date.now() };
+  Store.saveRunning(state.running);
+  const b = getBook(slot);
+  if (b && !b.startDate) updateBook(slot, { startDate: todayStr() }); else renderAll();
+}
+function stopTimer(silent){
+  const r = state.running; if (!r) return;
+  const end = Date.now();
+  state.running = null;
+  Store.saveRunning(null);
+  const b = getBook(r.slot);
+  if (b && end - r.startedAt >= 1000) {
+    updateBook(r.slot, { sessions: [...(b.sessions || []), { s: r.startedAt, e: end }] });
+    if (!silent) toast(`${fmtKor(end - r.startedAt)} 기록했어요`);
+  } else renderAll();
+}
+async function toggleDone(slot){
+  const b = getBook(slot); if (!b) return;
+  if (b.done) { updateBook(slot, { done: false }); return; }
+  if (isRunning(slot)) stopTimer(true);
+  const used = new Set(Object.values(state.books).filter(x => x.done).map(x => x.color));
+  const color = b.color || PALETTE.find(c => !used.has(c)) || PALETTE[slot % PALETTE.length];
+  updateBook(slot, { done: true, color, endDate: getBook(slot).endDate || todayStr() });
+  toast('완독! 책등에 색을 칠했어요');
+}
+async function removeBook(slot){
+  const b = getBook(slot); if (!b) return;
+  const ok = await confirmBox('책을 뺄까요?', `'${b.title}'의 날짜, 스톱워치 기록, 사진이 모두 지워져요.`);
+  if (!ok) return;
+  if (isRunning(slot)) { state.running = null; Store.saveRunning(null); }
+  (b.photos || []).forEach(p => Store.deletePhoto(p));
+  delete state.books[slot]; Store.deleteBook(slot);
+  closeDetail(); renderAll(); toast('책장에서 뺐어요');
+}
+
+/* ---------------- shelf rendering ---------------- */
+const spineEls = [];
+function buildShelf(){
+  const sc = $('scroller'), mini = $('mini');
+  for (let c = 0; c < CASES; c++) {
+    const wrap = document.createElement('div'); wrap.className = 'case-wrap';
+    const cs = document.createElement('div'); cs.className = 'case';
+    for (let s = 0; s < SHELVES; s++) {
+      const sh = document.createElement('div'); sh.className = 'shelf';
+      for (let p = 0; p < PER; p++) {
+        const slot = c*50 + s*10 + p;
+        const el = document.createElement('div'); el.className = 'book empty'; el.dataset.slot = slot;
+        el.style.height = (74 + rnd(slot, 1) * 24).toFixed(1) + '%';
+        el.style.flexGrow = (0.8 + rnd(slot, 2) * 0.45).toFixed(2);
+        el.innerHTML = '<span class="t"></span>';
+        el.setAttribute('role', 'button');
+        sh.appendChild(el); spineEls[slot] = el;
+      }
+      cs.appendChild(sh);
+    }
+    const pl = document.createElement('div'); pl.className = 'plinth'; cs.appendChild(pl);
+    wrap.appendChild(cs);
+    const fl = document.createElement('div'); fl.className = 'floor'; wrap.appendChild(fl);
+    sc.appendChild(wrap);
+
+    const m = document.createElement('div'); m.className = 'mini-case'; m.dataset.c = c;
+    for (let i = 0; i < 50; i++) m.appendChild(document.createElement('i'));
+    m.onclick = () => goCase(c);
+    mini.appendChild(m);
+  }
+  sc.addEventListener('click', e => {
+    const el = e.target.closest('.book'); if (!el) return;
+    const slot = +el.dataset.slot;
+    if (getBook(slot)) openDetail(slot); else openAdd(slot);
+  });
+  let st; sc.addEventListener('scroll', () => { clearTimeout(st); st = setTimeout(() => {
+    const i = Math.round(sc.scrollLeft / sc.clientWidth); if (i !== state.caseIdx) { state.caseIdx = i; renderCaseMeta(); }
+  }, 60); }, { passive: true });
+  $('prevCase').onclick = () => goCase(state.caseIdx - 1);
+  $('nextCase').onclick = () => goCase(state.caseIdx + 1);
+}
+function goCase(i){
+  i = Math.max(0, Math.min(CASES - 1, i)); state.caseIdx = i;
+  const sc = $('scroller'); sc.scrollTo({ left: i * sc.clientWidth, behavior: 'smooth' }); renderCaseMeta();
+}
+
+function renderShelf(){
+  for (let slot = 0; slot < TOTAL; slot++) {
+    const el = spineEls[slot], b = getBook(slot), st = statusOf(b);
+    el.className = 'book ' + st + (isRunning(slot) ? ' running' : '');
+    const t = el.firstChild;
+    if (!b) { t.textContent = '+'; el.style.backgroundColor = ''; el.style.removeProperty('--spine-text'); el.title = '빈 칸 · 책 꽂기'; }
+    else {
+      t.innerHTML = spineHTML(b.title);
+      el.title = b.title + (b.author ? ' · ' + b.author : '');
+      if (st === 'done' && b.color) { el.style.backgroundColor = b.color; el.style.setProperty('--spine-text', textOn(b.color)); }
+      else { el.style.backgroundColor = ''; el.style.removeProperty('--spine-text'); }
+    }
+  }
+  document.querySelectorAll('.mini-case').forEach((m, c) => {
+    [...m.children].forEach((cell, i) => {
+      const b = getBook(c*50 + i), st = statusOf(b);
+      cell.className = st === 'empty' ? '' : st === 'reading' ? 'has reading' : 'has';
+      cell.style.background = st === 'done' ? (b.color || '#4A9AD8') : '';
+    });
+  });
+}
+function renderCaseMeta(){
+  const c = state.caseIdx;
+  let done = 0, has = 0;
+  for (let i = c*50; i < c*50 + 50; i++) { const b = getBook(i); if (b) { has++; if (b.done) done++; } }
+  $('caseName').textContent = `책장 ${c+1}`;
+  $('caseInfo').textContent = `${has}권 꽂음 · ${done}권 완독`;
+  $('prevCase').disabled = c === 0; $('nextCase').disabled = c === CASES - 1;
+  document.querySelectorAll('.mini-case').forEach((m, i) => m.classList.toggle('on', i === c));
+}
+function renderStats(){
+  const all = Object.values(state.books);
+  const done = all.filter(b => b.done).length, reading = all.filter(b => statusOf(b) === 'reading').length;
+  $('doneCount').textContent = done;
+  $('cDone').textContent = done; $('cReading').textContent = reading; $('cPlanned').textContent = all.length - done - reading;
+  $('bar').style.width = (done / TOTAL * 100) + '%';
+  $('hint').hidden = all.length > 0;
+}
+function renderBanner(){
+  const r = state.running, bn = $('banner');
+  const show = !!r && getBook(r.slot) && state.openSlot !== r.slot;
+  bn.classList.toggle('show', !!show);
+  if (r && getBook(r.slot)) $('bannerTitle').textContent = getBook(r.slot).title + ' 읽는 중';
+}
+
+/* ---------------- detail ---------------- */
+function openDetail(slot){ if (location.hash !== '#book-' + slot) { state.pushed = true; location.hash = 'book-' + slot; } else showDetail(slot); }
+function closeDetail(){
+  if (state.pushed) { state.pushed = false; history.back(); }
+  else { history.replaceState(null, '', location.pathname + location.search); hideDetail(); }
+}
+function route(){
+  const m = /^#book-(\d+)$/.exec(location.hash);
+  if (m && getBook(+m[1])) showDetail(+m[1]); else { state.pushed = false; hideDetail(); }
+}
+function showDetail(slot){
+  const changed = state.openSlot !== slot;
+  state.openSlot = slot; if (changed) state.showAllSessions = false;
+  const d = $('detail'); d.classList.add('open'); d.setAttribute('aria-hidden', 'false');
+  if (changed) d.scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+  renderDetail(true); renderBanner();
+}
+function hideDetail(){
+  if (state.openSlot == null) return;
+  state.openSlot = null;
+  const d = $('detail'); d.classList.remove('open'); d.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = ''; renderBanner();
+}
+
+let photoKey = '';
+function renderDetail(force){
+  const slot = state.openSlot; if (slot == null) return;
+  const b = getBook(slot);
+  if (!b) { hideDetail(); return; }
+  const st = statusOf(b);
+  $('dLoc').textContent = locLabel(slot);
+  const setVal = (id, v) => { const el = $(id); if (document.activeElement !== el && el.value !== (v || '')) el.value = v || ''; };
+  setVal('dTitle', b.title); setVal('dAuthor', b.author); setVal('dStart', b.startDate); setVal('dEnd', b.endDate);
+
+  const sp = $('dSpine'); $('dSpineT').innerHTML = spineHTML(b.title);
+  sp.className = 'spine-prev ' + st;
+  sp.style.backgroundColor = st === 'done' ? b.color : '';
+  $('dSpineT').style.color = st === 'done' ? textOn(b.color) : '';
+  const pill = $('dPill'); pill.className = 'pill ' + st;
+  pill.textContent = st === 'done' ? '완독' : st === 'reading' ? (isRunning(slot) ? '지금 읽는 중' : '읽는 중') : '읽을 책';
+
+  // stopwatch button
+  const run = isRunning(slot), btn = $('swBtn');
+  btn.className = 'sw-btn' + (run ? ' stop' : '');
+  btn.innerHTML = run
+    ? '<svg viewBox="0 0 20 20" fill="currentColor"><rect x="4" y="3" width="4" height="14" rx="1"/><rect x="12" y="3" width="4" height="14" rx="1"/></svg>멈추기'
+    : '<svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 3.5v13a1 1 0 0 0 1.5.86l11-6.5a1 1 0 0 0 0-1.72l-11-6.5A1 1 0 0 0 5 3.5z"/></svg>' + ((b.sessions||[]).length ? '이어서 읽기' : '읽기 시작');
+
+  // sessions
+  const ss = (b.sessions || []).map((s, i) => ({ ...s, i })).reverse();
+  const shown = state.showAllSessions ? ss : ss.slice(0, 5);
+  $('sessions').innerHTML = ss.length ? shown.map(s => `
+    <li><span class="sd">${fmtDay(s.s)}</span><span class="st">${fmtHM(s.s)} – ${fmtHM(s.e)}</span>
+    <span class="sdur">${fmtKor(s.e - s.s)}</span><button class="x" data-i="${s.i}" aria-label="기록 삭제">×</button></li>`).join('')
+    : '<li class="empty-note" style="display:block;border:0">아직 기록이 없어요. 읽기 시작할 때 버튼을 눌러보세요</li>';
+  const more = $('moreSessions');
+  more.hidden = ss.length <= 5;
+  more.textContent = state.showAllSessions ? '접기' : `기록 ${ss.length}개 모두 보기`;
+
+  // period
+  const pe = $('dPeriod'); pe.classList.remove('warn');
+  if (b.startDate && b.endDate) {
+    const n = dayDiff(b.startDate, b.endDate);
+    if (n < 0) { pe.textContent = '다 읽은 날이 시작한 날보다 빨라요'; pe.classList.add('warn'); }
+    else pe.textContent = `${n + 1}일 동안 읽었어요 · 기록된 순독서 ${(b.sessions||[]).length}회`;
+  } else if (b.startDate) {
+    const n = dayDiff(b.startDate, todayStr());
+    pe.textContent = n >= 0 ? `읽기 시작한 지 ${n + 1}일째` : '시작일이 미래 날짜예요';
+  } else pe.textContent = '스톱워치를 처음 켜면 오늘 날짜로 자동 입력돼요';
+
+  // done + palette
+  $('doneBtn').classList.toggle('on', !!b.done);
+  $('doneBtn').textContent = b.done ? '완독 취소' : '다 읽었어요';
+  $('doneDesc').textContent = b.done ? '책등 색을 골라보세요' : '다 읽으면 책장에 색이 칠해져요';
+  const pal = $('palette'); pal.hidden = !b.done;
+  if (b.done) pal.innerHTML = PALETTE.map(c => `<button class="sw-color${c === b.color ? ' on' : ''}" data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join('');
+
+  // photos (rebuild only when list changes)
+  const photos = b.photos || [];
+  const key = slot + ':' + photos.map(p => p.id).join(',') + ':' + Store.canPhotos();
+  $('photoCount').textContent = photos.length ? photos.length + '장' : '';
+  if (force || key !== photoKey) {
+    photoKey = key;
+    const box = $('photos'); box.innerHTML = '';
+    photos.forEach(p => {
+      const bt = document.createElement('button'); bt.className = 'ph loading'; bt.dataset.id = p.id;
+      const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy';
+      img.onload = () => bt.classList.remove('loading');
+      Store.photoSrc(p).then(src => { if (src) img.src = src; else bt.classList.remove('loading'); });
+      bt.appendChild(img); box.appendChild(bt);
+    });
+    if (Store.canPhotos()) {
+      const add = document.createElement('button'); add.className = 'ph add'; add.id = 'addPhoto';
+      add.innerHTML = '<span>+</span>사진 추가'; box.appendChild(add);
+    } else if (!photos.length) {
+      box.innerHTML = '<div class="empty-note" style="grid-column:1/-1">이 화면에서는 사진을 올릴 수 없어요</div>';
+    }
+  }
+  tick();
+}
+
+/* ---------------- photos ---------------- */
+async function resizeImage(file, max = 1600){
+  let src;
+  try { src = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+  catch (e) {
+    src = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = URL.createObjectURL(file); });
+  }
+  const w = src.width, h = src.height, k = Math.min(1, max / Math.max(w, h));
+  const cv = document.createElement('canvas'); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+  cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
+  return await new Promise(res => cv.toBlob(res, 'image/jpeg', 0.85));
+}
+async function handleFiles(files){
+  const slot = state.openSlot; if (slot == null || !files.length) return;
+  toast(`사진 ${files.length}장 올리는 중…`);
+  let added = 0;
+  for (const f of files) {
+    if (!f.type.startsWith('image/')) continue;
+    try {
+      const blob = await resizeImage(f);
+      const p = await Store.uploadPhoto(blob);
+      const b = getBook(slot); if (!b) break;
+      await updateBook(slot, { photos: [...(b.photos || []), p] });
+      added++;
+    } catch (e) { console.error(e); toast('사진을 올리지 못했어요'); }
+  }
+  if (added) toast(`사진 ${added}장 추가했어요`);
+}
+let lbPhoto = null;
+async function openLightbox(id){
+  const b = getBook(state.openSlot); const p = b && (b.photos || []).find(x => x.id === id); if (!p) return;
+  lbPhoto = p; $('lbImg').src = await Store.photoSrc(p); $('lightbox').classList.add('show');
+}
+function closeLightbox(){ $('lightbox').classList.remove('show'); $('lbImg').removeAttribute('src'); lbPhoto = null; }
+
+/* ---------------- add sheet ---------------- */
+let addSlot = null;
+function openAdd(slot){
+  addSlot = slot; $('addLoc').textContent = locLabel(slot) + '에 꽂을 책을 적어주세요';
+  $('addTitle').value = ''; $('addAuthor').value = '';
+  $('addScrim').classList.add('show'); setTimeout(() => $('addTitle').focus(), 50);
+}
+function closeAdd(){ $('addScrim').classList.remove('show'); document.activeElement && document.activeElement.blur(); addSlot = null; }
+
+/* ---------------- ticking ---------------- */
+function tick(){
+  const now = Date.now();
+  let all = 0; for (const b of Object.values(state.books)) all += totalMs(b, now);
+  $('totalTime').textContent = fmtKor(all, false);
+  const r = state.running;
+  if (r) $('bannerClock').textContent = fmtClock(now - r.startedAt);
+  if (state.openSlot != null) {
+    const b = getBook(state.openSlot);
+    if (b) {
+      $('swClock').textContent = fmtClock(totalMs(b, now));
+      $('swSub').textContent = isRunning(b.slot) ? `이번에 읽은 시간 ${fmtClock(now - r.startedAt)}` : ((b.sessions||[]).length ? `${b.sessions.length}번에 나눠 읽었어요` : '');
+      $('swSub').style.color = isRunning(b.slot) ? '' : 'var(--muted)';
+    }
+  }
+}
+
+function renderAll(){
+  renderShelf(); renderStats(); renderCaseMeta(); renderBanner();
+  if (state.openSlot != null) renderDetail(false);
+  tick();
+}
+
+/* ---------------- wiring ---------------- */
+function wire(){
+  $('dBack').onclick = closeDetail;
+  $('dDelete').onclick = () => removeBook(state.openSlot);
+  $('swBtn').onclick = () => { const s = state.openSlot; isRunning(s) ? stopTimer() : startTimer(s); };
+  $('bannerStop').onclick = () => stopTimer();
+  $('bannerInfo').onclick = () => state.running && openDetail(state.running.slot);
+  $('doneBtn').onclick = () => toggleDone(state.openSlot);
+  $('palette').onclick = e => { const c = e.target.closest('.sw-color'); if (c) updateBook(state.openSlot, { color: c.dataset.c }); };
+  $('moreSessions').onclick = () => { state.showAllSessions = !state.showAllSessions; renderDetail(false); };
+  $('sessions').onclick = async e => {
+    const x = e.target.closest('.x'); if (!x) return;
+    const slot = state.openSlot, b = getBook(slot), i = +x.dataset.i, s = b.sessions[i]; if (!s) return;
+    if (!await confirmBox('기록을 지울까요?', `${fmtDay(s.s)} ${fmtHM(s.s)} – ${fmtHM(s.e)} (${fmtKor(s.e - s.s)})`)) return;
+    const cur = getBook(slot); updateBook(slot, { sessions: cur.sessions.filter((_, k) => k !== i) });
+  };
+  const commitText = (id, key, required) => {
+    const el = $(id);
+    const save = () => {
+      const slot = state.openSlot, b = getBook(slot); if (!b) return;
+      const v = el.value.trim();
+      if (required && !v) { el.value = b[key]; toast('제목은 비워둘 수 없어요'); return; }
+      if (v !== (b[key] || '')) updateBook(slot, { [key]: v });
+    };
+    el.addEventListener('change', save);
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') el.blur(); });
+  };
+  commitText('dTitle', 'title', true); commitText('dAuthor', 'author', false);
+  $('dStart').addEventListener('change', e => updateBook(state.openSlot, { startDate: e.target.value }));
+  $('dEnd').addEventListener('change', e => updateBook(state.openSlot, { endDate: e.target.value }));
+
+  $('photos').onclick = e => {
+    if (e.target.closest('#addPhoto')) { $('fileIn').click(); return; }
+    const ph = e.target.closest('.ph'); if (ph && ph.dataset.id) openLightbox(ph.dataset.id);
+  };
+  $('fileIn').onchange = e => { const fs = [...e.target.files]; e.target.value = ''; handleFiles(fs); };
+  $('lbClose').onclick = closeLightbox;
+  $('lbDel').onclick = async () => {
+    const p = lbPhoto, slot = state.openSlot; if (!p) return;
+    closeLightbox();
+    if (!await confirmBox('사진을 지울까요?', '지운 사진은 되돌릴 수 없어요.')) return;
+    const b = getBook(slot); await updateBook(slot, { photos: (b.photos || []).filter(x => x.id !== p.id) });
+    Store.deletePhoto(p);
+  };
+
+  $('addForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const t = $('addTitle').value.trim(); if (!t || addSlot == null) return;
+    const slot = addSlot; addBook(slot, t, $('addAuthor').value.trim()); closeAdd(); openDetail(slot);
+  });
+  $('addCancel').onclick = closeAdd;
+  $('addScrim').onclick = e => { if (e.target === $('addScrim')) closeAdd(); };
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if ($('lightbox').classList.contains('show')) closeLightbox();
+    else if ($('menuScrim').classList.contains('show')) closeMenu();
+    else if ($('addScrim').classList.contains('show')) closeAdd();
+    else if (state.openSlot != null && !$('cfScrim').classList.contains('show')) closeDetail();
+  });
+  window.addEventListener('hashchange', route);
+  window.addEventListener('resize', () => { const sc = $('scroller'); sc.scrollLeft = state.caseIdx * sc.clientWidth; });
+  setInterval(tick, 250);
+}
+
+/* ---------------- menu / backup / install ---------------- */
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('mInstall').hidden = false; });
+window.addEventListener('appinstalled', () => { installEvt = null; $('mInstall').hidden = true; toast('홈 화면에 설치했어요'); });
+function openMenu(){
+  const n = Object.keys(state.books).length;
+  $('mInfo').textContent = `책 ${n}권 · 사진 ${Object.values(state.books).reduce((a, b) => a + (b.photos || []).length, 0)}장`;
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  $('mIosTip').hidden = standalone || installEvt || !/iphone|ipad|ipod/i.test(navigator.userAgent);
+  $('menuScrim').classList.add('show');
+}
+function closeMenu(){ $('menuScrim').classList.remove('show'); }
+function wireMenu(){
+  $('menuBtn').onclick = openMenu;
+  $('mClose').onclick = closeMenu;
+  $('menuScrim').onclick = e => { if (e.target === $('menuScrim')) closeMenu(); };
+  $('mInstall').onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice.catch(() => {}); installEvt = null; $('mInstall').hidden = true; };
+  $('mExport').onclick = async () => {
+    try {
+      toast('백업 파일 만드는 중…');
+      const data = await Store.exportBackup();
+      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      const name = `200권책장_백업_${todayStr()}.json`;
+      const file = new File([blob], name, { type: 'application/json' });
+      if (navigator.canShare && navigator.canShare({ files: [file] }) && /android|iphone|ipad/i.test(navigator.userAgent)) {
+        try { await navigator.share({ files: [file], title: name }); closeMenu(); return; } catch (e) { if (e.name === 'AbortError') return; }
+      }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      closeMenu(); toast('백업 파일을 저장했어요');
+    } catch (e) { console.error(e); toast('백업 파일을 만들지 못했어요'); }
+  };
+  $('mImport').onclick = () => $('importIn').click();
+  $('importIn').onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    closeMenu();
+    let data; try { data = JSON.parse(await f.text()); } catch (err) { toast('백업 파일을 읽을 수 없어요'); return; }
+    if (!data || data.app !== 'bookshelf200') { toast('200권 책장 백업 파일이 아니에요'); return; }
+    const n = Object.keys(data.books || {}).length;
+    if (!await confirmBox('백업을 불러올까요?', `지금 기록을 지우고 백업 파일의 책 ${n}권으로 바꿔요. 되돌릴 수 없어요.`, '불러오기')) return;
+    try { const k = await Store.importBackup(data); closeDetail(); renderAll(); toast(`책 ${k}권을 불러왔어요`); }
+    catch (err) { console.error(err); toast('백업을 불러오지 못했어요'); }
+  };
+}
+
+/* ---------------- boot ---------------- */
+buildShelf(); wire(); wireMenu(); renderAll();
+Store.init(() => { renderAll(); if (state.openSlot == null) route(); }).then(() => {
+  if (Store.mode === 'memory') { const badge = $('modeBadge'); badge.hidden = false; badge.textContent = '저장 안 됨'; toast('이 브라우저에서는 기록이 저장되지 않아요'); }
+  $('loading').classList.add('hide');
+  route();
+});
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+})();
+</script>
+</body>
+</html>

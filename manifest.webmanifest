@@ -1,0 +1,17 @@
+{
+  "name": "나의 200권 책장",
+  "short_name": "200권 책장",
+  "description": "읽을 책을 꽂고, 다 읽으면 색칠하는 200권 디지털 책장",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EFE8DD",
+  "theme_color": "#EFE8DD",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
